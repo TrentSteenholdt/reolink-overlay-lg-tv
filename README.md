@@ -81,6 +81,10 @@ http://<TV_LAN_IP>:8765/api/v1/reolink/webhook?token=<TOKEN>
 
 Use the same LAN address as `bindAddress` and the token stored in `api.key`. Select **Test**, then **Save**. A test without an `alarm` object receives HTTP 200 and does not open the overlay. Reolink’s official [Webhook overview and setup](https://support.reolink.com/articles/46238508855193-Overview-of-Webhook-in-Reolink-Cameras/) describes the camera-side controls.
 
+The camera’s Push Notifications page provides the Webhook control:
+
+![Reolink Push Notifications settings page with the Webhook option](docs/images/push-reolink.png)
+
 ## Event display settings
 
 Edit `notifications` in the root-owned `api-config.json`. Supported alarm types are `people`, `vehicle`, `visitor`, `motion`, and `pet`. Each can be disabled with `null`, or mapped to an overlay event (`motion-person`, `motion-car`, or `doorbell`), a message, a sound, and `durationSeconds` (1–86400). The example enables people and vehicle and disables visitor, motion, and pet. Sound can be `motion-person`, `motion-car`, `doorbell`, or `none`.
