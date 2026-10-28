@@ -2,6 +2,8 @@
 
 A floating overlay for compatible rooted LG webOS TVs. A Reolink camera sends a webhook directly to the TV; the overlay displays its RTSP substream, an optional message and sound, and a countdown. The project is released under the MIT License.
 
+![Camera notification overlay with a daytime garden preview](docs/images/camera-overlay-screen.png)
+
 ## Requirements
 
 - A rooted, compatible LG webOS TV with Homebrew installed.
