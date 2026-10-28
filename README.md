@@ -12,7 +12,7 @@ A floating overlay for compatible rooted LG webOS TVs. A Reolink camera sends a 
 
 ## Hardware testing
 
-The prior local TV environment was a rooted LG TV running webOS 7.3. Its model and full firmware build were not recorded. This public commit has only had static checks; it has not been installed or tested on a TV.
+The overlay was installed and exercised on an LG 65UQ9000PSD running webOS 7.3. Version 0.3.15 was installed on 28 October 2026, and Blue-button closure was confirmed. The current public version, 1.0.0, has only had static checks and has not been installed on a TV. The full firmware build number was not recorded.
 
 ## Build and install
 
