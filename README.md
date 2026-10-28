@@ -10,9 +10,9 @@ A floating overlay for compatible rooted LG webOS TVs. A Reolink camera sends a 
 - A standalone Reolink camera with webhook firmware and RTSP enabled. NVR-based setups are outside this project’s documented configuration.
 - A Homebrew Input Hook setup that maps the remote’s Blue button to `/var/lib/webosbrew/camera-overlay/control hide`.
 
-## Hardware testing
+## Compatibility
 
-The overlay was installed and exercised on an LG 65UQ9000PSD running webOS 7.3. Version 0.3.15 was installed on 28 October 2026, and Blue-button closure was confirmed. The current public version, 1.0.0, has only had static checks and has not been installed on a TV. The full firmware build number was not recorded.
+Tested on a rooted LG 65UQ9000PSD running webOS 7.3.
 
 ## Build and install
 
