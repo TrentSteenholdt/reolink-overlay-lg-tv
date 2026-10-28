@@ -1,0 +1,12 @@
+# Local camera credentials and TV-side API secrets
+stream.json
+api.key
+api-config.json
+
+# Build and Python artifacts
+*.ipk
+__pycache__/
+*.py[cod]
+
+# Local development worktrees
+.worktrees/

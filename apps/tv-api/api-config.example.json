@@ -1,0 +1,13 @@
+{
+  "enabled": false,
+  "bindAddress": "TV_LAN_IPV4",
+  "port": 8765,
+  "allowedClients": ["CAMERA_LAN_IPV4"],
+  "notifications": {
+    "people": { "event": "motion-person", "message": "Camera: Person detected", "sound": "motion-person", "durationSeconds": 300 },
+    "vehicle": { "event": "motion-car", "message": "Camera: Vehicle detected", "sound": "motion-car", "durationSeconds": 300 },
+    "visitor": null,
+    "motion": null,
+    "pet": null
+  }
+}

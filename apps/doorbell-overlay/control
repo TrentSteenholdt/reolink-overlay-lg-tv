@@ -1,0 +1,161 @@
+#!/bin/sh
+set -eu
+
+overlay_dir=/var/lib/webosbrew/camera-overlay
+pid_file=$overlay_dir/producer.pid
+timeout_file=$overlay_dir/timeout-seconds
+timeout_marker=/tmp/camera-overlay-timeout-seconds
+notification_file=/tmp/camera-overlay-notification.json
+
+producer_is_running() {
+    [ -f "$pid_file" ] || return 1
+    pid=$(cat "$pid_file")
+    case "$pid" in
+        *[!0-9]*|'') return 1 ;;
+    esac
+    [ -r "/proc/$pid/cmdline" ] || return 1
+    tr '\000' ' ' < "/proc/$pid/cmdline" | grep -Fq "$overlay_dir/producer.py"
+}
+
+stop_producer() {
+    if [ -f "$pid_file" ]; then
+        pid=$(cat "$pid_file")
+        case "$pid" in
+            *[!0-9]*|'') ;;
+            *)
+                if [ -r "/proc/$pid/cmdline" ] &&
+                    tr '\000' ' ' < "/proc/$pid/cmdline" |
+                        grep -Fq "$overlay_dir/producer.py"; then
+                    kill -TERM "$pid" 2>/dev/null || true
+                    sleep 0.2
+                    if kill -0 "$pid" 2>/dev/null; then
+                        kill -KILL "$pid" 2>/dev/null || true
+                    fi
+                fi
+                ;;
+        esac
+        rm -f "$pid_file"
+    fi
+    rm -f "$overlay_dir/frame.png" /tmp/camera-overlay-frame.png /tmp/camera-overlay-mode "$timeout_marker"
+}
+
+case "${1:-}" in
+    show)
+        timeout_seconds=0
+        if [ -f "$timeout_file" ]; then
+            timeout_seconds=$(cat "$timeout_file")
+        fi
+        case "$timeout_seconds" in
+            ''|*[!0-9]*)
+                echo 'timeout-seconds must be an integer from 0 to 86400' >&2
+                exit 2
+                ;;
+        esac
+        if [ "$timeout_seconds" -gt 86400 ]; then
+            echo 'timeout-seconds must be an integer from 0 to 86400' >&2
+            exit 2
+        fi
+        stop_producer
+        if [ "${CAMERA_OVERLAY_PRESERVE_NOTIFICATION:-0}" != 1 ]; then
+            rm -f "$notification_file"
+        fi
+        printf '%s\n' "$timeout_seconds" > "$timeout_marker"
+        luna-send -n 1 -f luna://com.webos.applicationManager/closeByAppId \
+            '{"id":"org.cameraoverlay.lgtv"}' </dev/null >/dev/null
+        sleep 1
+        if [ -f "$overlay_dir/stream.json" ]; then
+            printf 'video' > /tmp/camera-overlay-mode
+            python3 "$overlay_dir/producer.py" </dev/null >/dev/null 2>&1 &
+            echo $! > "$pid_file"
+        fi
+        luna-send -n 1 -f luna://com.webos.applicationManager/launch \
+            '{"id":"org.cameraoverlay.lgtv"}' </dev/null
+        ;;
+    hide)
+        stop_producer
+        rm -f "$notification_file"
+        luna-send -n 1 -f luna://com.webos.applicationManager/closeByAppId \
+            '{"id":"org.cameraoverlay.lgtv"}' </dev/null
+        ;;
+    notify)
+        if [ "$#" -lt 3 ]; then
+            echo 'Usage: control notify motion-person|motion-car|doorbell [--sound none|motion-person|motion-car|doorbell] "message"' >&2
+            exit 2
+        fi
+        event_type=$2
+        sound=$event_type
+        if [ "$event_type" = doorbell ]; then
+            sound=none
+        fi
+        shift 2
+        duration_seconds=$(cat "$timeout_file" 2>/dev/null || printf '0')
+        while [ "$#" -gt 0 ]; do
+            case "$1" in
+                --sound)
+                    [ "$#" -ge 2 ] || { echo 'Missing sound value' >&2; exit 2; }
+                    sound=$2
+                    shift 2
+                    ;;
+                --duration)
+                    [ "$#" -ge 2 ] || { echo 'Missing duration value' >&2; exit 2; }
+                    duration_seconds=$2
+                    shift 2
+                    ;;
+                *) break ;;
+            esac
+        done
+        message=$*
+        case "$event_type" in
+            motion-person|motion-car|doorbell) ;;
+            *)
+                echo 'Event must be motion-person, motion-car, or doorbell' >&2
+                exit 2
+                ;;
+        esac
+        case "$sound" in
+            none|motion-person|motion-car|doorbell) ;;
+            *)
+                echo 'Sound must be none, motion-person, motion-car, or doorbell' >&2
+                exit 2
+                ;;
+        esac
+        if [ -z "$message" ] || [ "${#message}" -gt 240 ]; then
+            echo 'Message must contain 1 to 240 characters' >&2
+            exit 2
+        fi
+        case "$duration_seconds" in
+            ''|*[!0-9]*) echo 'Duration must be an integer from 0 to 86400' >&2; exit 2 ;;
+        esac
+        if [ "$duration_seconds" -gt 86400 ]; then
+            echo 'Duration must be an integer from 0 to 86400' >&2
+            exit 2
+        fi
+        DOORBELL_NOTIFY_TYPE="$event_type" DOORBELL_NOTIFY_SOUND="$sound" DOORBELL_NOTIFY_MESSAGE="$message" DOORBELL_NOTIFY_DURATION="$duration_seconds" python3 - <<'PY'
+import json
+import os
+import time
+
+path = "/tmp/camera-overlay-notification.json"
+temp = path + "." + str(os.getpid())
+payload = {
+    "id": str(int(time.time() * 1000)) + "-" + str(os.getpid()),
+    "type": os.environ["DOORBELL_NOTIFY_TYPE"],
+    "sound": os.environ["DOORBELL_NOTIFY_SOUND"],
+    "message": os.environ["DOORBELL_NOTIFY_MESSAGE"],
+    "durationSeconds": int(os.environ["DOORBELL_NOTIFY_DURATION"]),
+    "playOnLoad": True,
+}
+with open(temp, "w", encoding="utf-8") as notification:
+    json.dump(payload, notification, ensure_ascii=False)
+os.chmod(temp, 0o644)
+os.replace(temp, path)
+PY
+        if ! producer_is_running; then
+            CAMERA_OVERLAY_PRESERVE_NOTIFICATION=1 "$0" show >/dev/null
+        fi
+        ;;
+    *)
+        echo 'Usage: control show|hide|notify' >&2
+        exit 2
+        ;;
+esac

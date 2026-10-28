@@ -1,0 +1,9 @@
+#!/bin/sh
+# Dedicated, reversible Homebrew hook for the optional LAN API receiver.
+# api-control is a no-op until an operator provisions api-config.json and api.key.
+attempt=0
+while ! /var/lib/webosbrew/camera-overlay/api-control start >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    [ "$attempt" -ge 12 ] && exit 0
+    sleep 5
+done

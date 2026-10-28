@@ -1,0 +1,82 @@
+#!/bin/sh
+set -eu
+
+overlay_dir=/var/lib/webosbrew/camera-overlay
+server=$overlay_dir/api_server.js
+pid_file=$overlay_dir/api-server.pid
+log_file=$overlay_dir/api-server.log
+config_file=$overlay_dir/api-config.json
+key_file=$overlay_dir/api.key
+
+api_is_running() {
+    [ -f "$pid_file" ] || return 1
+    pid=$(cat "$pid_file")
+    case "$pid" in
+        *[!0-9]*|'') return 1 ;;
+    esac
+    [ -r "/proc/$pid/cmdline" ] || return 1
+    tr '\000' ' ' < "/proc/$pid/cmdline" | grep -Fq "$server"
+}
+
+start_api() {
+    # Leave the feature dormant until the TV has a unique key and an explicit
+    # private-LAN/client allowlist configuration.
+    if [ ! -f "$config_file" ] || [ ! -f "$key_file" ]; then
+        echo 'Overlay API is not provisioned; listener remains stopped.'
+        return 0
+    fi
+    if api_is_running; then
+        echo 'Overlay API is already running.'
+        return 0
+    fi
+    rm -f "$pid_file"
+    umask 077
+    if [ -f "$log_file" ] && [ "$(wc -c < "$log_file")" -gt 1048576 ]; then
+        mv -f "$log_file" "$log_file.1"
+    fi
+    node "$server" </dev/null >> "$log_file" 2>&1 &
+    echo $! > "$pid_file"
+    chmod 600 "$pid_file" "$log_file" 2>/dev/null || true
+    sleep 1
+    if ! api_is_running; then
+        rm -f "$pid_file"
+        echo 'Overlay API failed to start; inspect its root-only log.' >&2
+        exit 1
+    fi
+    echo 'Overlay API started.'
+}
+
+stop_api() {
+    if [ -f "$pid_file" ]; then
+        pid=$(cat "$pid_file")
+        case "$pid" in
+            *[!0-9]*|'') ;;
+            *)
+                if [ -r "/proc/$pid/cmdline" ] &&
+                    tr '\000' ' ' < "/proc/$pid/cmdline" | grep -Fq "$server"; then
+                    kill -TERM "$pid" 2>/dev/null || true
+                    attempt=0
+                    while kill -0 "$pid" 2>/dev/null && [ "$attempt" -lt 5 ]; do
+                        sleep 1
+                        attempt=$((attempt + 1))
+                    done
+                    if kill -0 "$pid" 2>/dev/null; then
+                        kill -KILL "$pid" 2>/dev/null || true
+                    fi
+                fi
+                ;;
+        esac
+        rm -f "$pid_file"
+    fi
+    echo 'Overlay API stopped.'
+}
+
+case "${1:-}" in
+    start) start_api ;;
+    stop) stop_api ;;
+    restart) stop_api; start_api ;;
+    status)
+        if api_is_running; then echo 'running'; else echo 'stopped'; fi
+        ;;
+    *) echo 'Usage: api-control start|stop|restart|status' >&2; exit 2 ;;
+esac

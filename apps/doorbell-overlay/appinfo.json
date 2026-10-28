@@ -1,0 +1,15 @@
+{
+  "id": "org.cameraoverlay.lgtv",
+  "version": "1.0.0",
+  "vendor": "Camera Overlay contributors",
+  "type": "qml",
+  "main": "main.qml",
+  "title": "Camera Overlay",
+  "icon": "icon.png",
+  "requiredACG": [],
+  "visible": false,
+  "noSplashOnLaunch": true,
+  "transparent": true,
+  "defaultWindowType": "floating",
+  "handlesRelaunch": true
+}
