@@ -14,7 +14,7 @@ A floating overlay for compatible rooted LG webOS TVs. A Reolink camera sends a 
 
 ## Compatibility
 
-Tested on a rooted LG 65UQ9000PSD running webOS 7.3.
+Tested on a rooted LG 65UQ9000PSD running webOS 7.3, with a Reolink Video Doorbell WiFi (D340W) running firmware v3.0.0.4662_2503122270.
 
 ## Build and install
 
